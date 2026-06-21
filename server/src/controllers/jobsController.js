@@ -15,8 +15,8 @@ const uploadImage = async (req, res) => {
 
     const jobId = uuidv4();
     
-    // Path configuration relative to server root
-    const relativeImagePath = path.relative(path.resolve(__dirname, '../../..'), req.file.path);
+    // Save path matches static route prefix + unique upload filename
+    const relativeImagePath = `uploads/${req.file.filename}`;
 
     // Create a new Job entry in the database
     const job = await Job.create({

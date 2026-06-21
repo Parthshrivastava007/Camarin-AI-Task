@@ -28,7 +28,6 @@ app.use('/api/jobs', jobRoutes);
 app.use((err, req, res, next) => {
   console.error('[App Error Handler]', err.stack || err.message);
   
-  // Custom Multer size limit error handling
   if (err instanceof require('multer').MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({ error: 'File size exceeds the 5MB limit.' });

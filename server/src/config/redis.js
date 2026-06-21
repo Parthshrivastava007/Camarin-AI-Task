@@ -15,12 +15,19 @@ const getRedisConfig = () => {
   const port = parseInt(process.env.REDIS_PORT || '6379', 10);
   const password = process.env.REDIS_PASSWORD || undefined;
 
-  return {
+  const config = {
     host,
     port,
     password,
     maxRetriesPerRequest: null, // Critical requirement for BullMQ
   };
+
+  // Upstash endpoints require TLS enabled connections
+  if (host.endsWith('upstash.io')) {
+    config.tls = {};
+  }
+
+  return config;
 };
 
 const getRedisConnection = () => {

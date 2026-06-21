@@ -505,7 +505,13 @@ const Dashboard = () => {
                       }}
                     >
                       <FileImage size={32} />
-                      <span>{job.status === 'failed' ? 'Failed' : 'Pending...'}</span>
+                      <span>
+                        {job.status === 'failed'
+                          ? 'Failed'
+                          : job.status === 'completed'
+                          ? 'Image Error'
+                          : 'Pending...'}
+                      </span>
                     </div>
                   </div>
 
