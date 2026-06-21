@@ -1,0 +1,25 @@
+# Dependency directories
+node_modules/
+
+# Local environment secret variables
+.env
+.env.local
+.env.*.local
+
+# Image upload directories
+server/uploads/
+uploads/
+
+# Build and distribution files
+dist/
+client/dist/
+
+# Logs and runtime files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# OS Metadata
+.DS_Store
+Thumbs.db

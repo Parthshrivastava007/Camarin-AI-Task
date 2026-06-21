@@ -1,0 +1,297 @@
+openapi: 3.0.3
+info:
+  title: AuraMedia API - Asynchronous AI Media Processing Pipeline
+  description: >
+    This API allows users to authenticate, upload images, monitor asynchronous processing status,
+    retrieve metadata results (captions, labels, safety classifications), and retry failed jobs.
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000/api
+    description: Local development API server
+paths:
+  /auth/register:
+    post:
+      summary: Register a new user
+      description: Creates a user account and returns a JWT token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  minLength: 3
+                  example: developer_bob
+                password:
+                  type: string
+                  minLength: 6
+                  example: securepass123
+      responses:
+        '201':
+          description: User registered successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      username:
+                        type: string
+        '400':
+          description: Validation error or username already taken.
+
+  /auth/login:
+    post:
+      summary: Authenticate user & get token
+      description: Validates user credentials and returns a JWT token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  example: developer_bob
+                password:
+                  type: string
+                  example: securepass123
+      responses:
+        '200':
+          description: Authentication successful.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      username:
+                        type: string
+        '401':
+          description: Invalid username or password.
+
+  /jobs/upload:
+    post:
+      summary: Upload an image file for processing
+      description: Accepts JPG, PNG, and WEBP files (Max 5MB), creates a job record in DB, enqueues it, and returns the Job ID immediately.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - image
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: Image file to process (JPG, PNG, WEBP, <= 5MB)
+      responses:
+        '201':
+          description: File accepted and enqueued.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Image uploaded successfully. Processing started.
+                  jobId:
+                    type: string
+                    format: uuid
+                    example: f47ac10b-58cc-4372-a567-0e02b2c3d479
+                  status:
+                    type: string
+                    example: pending
+        '400':
+          description: File rejected (invalid format or > 5MB limit).
+        '401':
+          description: Unauthorized. Invalid or missing token.
+
+  /jobs:
+    get:
+      summary: Retrieve authenticated user's jobs list
+      description: Returns a list of all processing jobs submitted by the current user, sorted by creation date descending.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of jobs retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Job'
+        '401':
+          description: Unauthorized.
+
+  /jobs/{id}:
+    get:
+      summary: Get details of a specific job
+      description: Returns the status, metadata, and AI enrichment results for the specified job ID.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Unique job ID (UUID)
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Job details retrieved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '401':
+          description: Unauthorized.
+        '404':
+          description: Job not found or access denied.
+
+  /jobs/{id}/retry:
+    post:
+      summary: Retry a failed job
+      description: Resets a failed job back to pending and re-enqueues it for processing.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Unique job ID (UUID)
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Job re-enqueued successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Job re-enqueued for processing
+                  job:
+                    $ref: '#/components/schemas/Job'
+        '400':
+          description: Job is not in a failed state.
+        '401':
+          description: Unauthorized.
+        '404':
+          description: Job not found or access denied.
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Job:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: f47ac10b-58cc-4372-a567-0e02b2c3d479
+        userId:
+          type: string
+          example: 60b8d29f1234567890abcdef
+        status:
+          type: string
+          enum: [pending, processing, completed, failed]
+          example: completed
+        originalName:
+          type: string
+          example: sunset_beach.png
+        mimeType:
+          type: string
+          example: image/png
+        size:
+          type: integer
+          example: 1048576
+        imagePath:
+          type: string
+          example: uploads/image-1623420000000.png
+        results:
+          type: object
+          properties:
+            caption:
+              type: string
+              example: A beautiful sunset over a calm ocean beach.
+            labels:
+              type: array
+              items:
+                type: string
+              example: [Sunset, Beach, Ocean, Sky, Horizon, Nature]
+            safeSearch:
+              type: object
+              properties:
+                adult:
+                  type: string
+                  example: VERY_UNLIKELY
+                spoof:
+                  type: string
+                  example: VERY_UNLIKELY
+                medical:
+                  type: string
+                  example: VERY_UNLIKELY
+                violence:
+                  type: string
+                  example: VERY_UNLIKELY
+                racy:
+                  type: string
+                  example: UNLIKELY
+            flagged:
+              type: boolean
+              example: false
+            flaggedCategory:
+              type: string
+              nullable: true
+              example: null
+        error:
+          type: string
+          nullable: true
+          example: null
+        retryCount:
+          type: integer
+          example: 0
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-06-21T06:00:00.000Z
+        updatedAt:
+          type: string
+          format: date-time
+          example: 2026-06-21T06:01:00.000Z
