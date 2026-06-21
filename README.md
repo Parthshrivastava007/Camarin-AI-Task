@@ -19,6 +19,8 @@ AuraMedia is a production-grade microservice architecture designed to handle use
 
 ## System Architecture
 
+![System Architecture Diagram](architecture_diagram.png)
+
 ```mermaid
 graph TD
     User([User Client Browser]) <--> |1. React UI / Poll / Upload| API[Express API Server]
