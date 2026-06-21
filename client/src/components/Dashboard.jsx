@@ -39,7 +39,7 @@ const Dashboard = () => {
   // In-app notifications
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notifiedJobIds, setNotifiedJobIds] = useState(new Set());
+  const notifiedJobIdsRef = useRef(new Set());
   
   // Toast overlay states
   const [toasts, setToasts] = useState([]);
@@ -72,9 +72,9 @@ const Dashboard = () => {
       
       // Process new notifications for flagged files
       fetchedJobs.forEach((job) => {
-        if (job.results?.flagged && !notifiedJobIds.has(job.id)) {
+        if (job.results?.flagged && !notifiedJobIdsRef.current.has(job.id)) {
           // Add to notified cache
-          setNotifiedJobIds((prev) => new Set([...prev, job.id]));
+          notifiedJobIdsRef.current.add(job.id);
           
           // Trigger system notification
           const msg = `Your upload '${job.originalName}' was flagged for ${job.results.flaggedCategory || 'content safety'}.`;
