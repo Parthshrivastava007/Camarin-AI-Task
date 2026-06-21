@@ -1,49 +1,6 @@
-# AuraMedia - Asynchronous AI Media Processing Pipeline
-
-AuraMedia is a production-grade microservice architecture designed to handle user image uploads, process them asynchronously through a multi-stage AI pipeline, and return enriched structured metadata to the user.
-
-## Core Features
-
-- **JWT Authentication**: Secure user registration and login endpoints protecting all services.
-- **Asynchronous Processing**: Immediate Job ID return on image upload; processing occurs in the background.
-- **Multi-Stage AI Pipeline**:
-  1. **Image Captioning**: Natural language description via Salesforce BLIP on Hugging Face Inference API.
-  2. **Object Detection**: Vision-based label extraction.
-  3. **Content Safety**: Unsafe category scanning (Adult, Violence, Medical, Racy, Spoof).
-- **Graceful Mock Fallbacks**: Works immediately out-of-the-box without requiring API keys. Trigger content safety flagging in mock mode using name keywords.
-- **Real-Time Polling Dashboard**: Reactive React dashboard reflecting job state changes (pending, processing, completed, failed) with direct retry capability.
-- **In-App Safety Alerts**: Persistent safety toast banners and notifications dropdown when uploaded files fail the safety checks.
-- **Dockerized Environment**: Single `docker-compose up` setup launching MongoDB, Redis, API, Worker, and Frontend.
-
----
-
 ## System Architecture
 
 ![System Architecture Diagram](architecture_diagram.png)
-
-```mermaid
-graph TD
-    User([User Client Browser]) <--> |1. React UI / Poll / Upload| API[Express API Server]
-    
-    subgraph Storage & Queue Infrastructure
-        DB[(MongoDB Database)] <--> |Read/Write Job States & Auth| API
-        Queue[Redis BullMQ Job Broker] <-- |2. Enqueue Job ID| API
-        Vol[(Shared Docker Volume)] <--> |Write Images| API
-    end
-    
-    subgraph Background Processing Layer
-        Worker[BullMQ Worker Processor] <-- |3. Dequeue Job ID| Queue
-        Worker <--> |Update Job Status & Results| DB
-        Worker --> |4. Read Uploaded Image| Vol
-        
-        subgraph External AI Services (Fallback to Mock Mode if Keyless)
-            Worker --> |Step 1: Captioning| HF[Hugging Face BLIP API]
-            Worker --> |Step 2 & 3: Labels & SafeSearch| GCV[Google Cloud Vision API]
-        end
-    end
-```
-
----
 
 ## Quick Start (Local Run)
 
@@ -61,38 +18,7 @@ GOOGLE_API_KEY=your_google_cloud_vision_api_key_here
 
 ### 2. Launch Services
 Run the following command in the root folder:
-```bash
 docker-compose up --build
-```
-This spins up:
-- **MongoDB** on `mongodb://localhost:27017`
-- **Redis** on `redis://localhost:6379`
-- **Backend Express API** on `http://localhost:5000`
-- **React Frontend** on `http://localhost:3000`
-- **Worker Process** running in the background.
-
----
-
-## Detailed Tech Stack & Design Choices
-
-### 1. Database & Queue
-- **MongoDB & Mongoose**: Perfect for storing dynamic, enriched JSON metadata returned from different AI steps.
-- **Redis & BullMQ**: A robust, transaction-supported message broker queue. We chose BullMQ because it handles automatic exponential backoff retries, process concurrency, and preserves job lifecycle state directly in Redis.
-
-### 2. State & File Management
-- **Shared Docker Volume (`uploads-data`)**: Images are uploaded to the API container and stored locally. A shared Docker volume maps `/app/uploads` in both the `api` and `worker` containers, allowing the worker to read the binary files directly without network transmission overhead.
-- **JWT (JSON Web Token)**: Used for stateless authentication. Microservices can verify the user's signature without querying the database for every single request.
-
-### 3. Verification & AI Mock Mode
-- **Zero-Config Fallback**: If `HF_API_TOKEN` and `GOOGLE_API_KEY` are not set, the AI service shifts to Mock Mode.
-- **Testing Safety Flags in Mock Mode**:
-  To test flagged content handling in the UI, name your image file containing any of these keywords:
-  - `unsafe` or `adult` $\rightarrow$ Triggers Adult safety flag (`VERY_LIKELY`)
-  - `violence` or `blood` $\rightarrow$ Triggers Violence safety flag (`LIKELY`)
-  - `racy` or `bikini` $\rightarrow$ Triggers Racy safety flag (`VERY_LIKELY`)
-  - `medical` or `surgery` $\rightarrow$ Triggers Medical safety flag (`LIKELY`)
-
----
 
 ## API Endpoints Summary
 
