@@ -7,6 +7,7 @@ const {
   getUserJobs,
   getJobDetail,
   retryJob,
+  deleteJob,
 } = require('../controllers/jobsController');
 
 // All job routes require authentication
@@ -21,5 +22,6 @@ router.get('/:id', getJobDetail);
 
 // Action endpoints
 router.post('/:id/retry', retryJob);
+router.delete('/:id', deleteJob);
 
 module.exports = router;

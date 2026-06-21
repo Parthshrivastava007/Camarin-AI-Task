@@ -125,9 +125,46 @@ const retryJob = async (req, res) => {
   }
 };
 
+// @desc    Delete a job and its associated image file
+// @route   DELETE /api/jobs/:id
+// @access  Private
+const deleteJob = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const job = await Job.findOne({ id, userId: req.user.id });
+
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found or access denied' });
+    }
+
+    // Try to delete physical file
+    const filePath = path.resolve(job.imagePath);
+    if (fs.existsSync(filePath)) {
+      try {
+        fs.unlinkSync(filePath);
+      } catch (unlinkErr) {
+        console.error('Failed to unlink physical media file:', unlinkErr.message);
+      }
+    }
+
+    // Delete from DB
+    await Job.deleteOne({ id });
+
+    return res.json({
+      message: 'Job and associated media deleted successfully',
+      id,
+    });
+  } catch (error) {
+    console.error('Delete Job Error:', error);
+    return res.status(500).json({ error: 'Failed to delete job' });
+  }
+};
+
 module.exports = {
   uploadImage,
   getUserJobs,
   getJobDetail,
   retryJob,
+  deleteJob,
 };

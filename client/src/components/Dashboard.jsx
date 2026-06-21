@@ -231,6 +231,31 @@ const Dashboard = () => {
     }
   };
 
+  // Delete a job and its associated storage file
+  const handleDeleteJob = async (jobId, e) => {
+    if (e) e.stopPropagation(); // Stop card click from opening modal
+    
+    if (!window.confirm('Are you sure you want to permanently delete this image processing job?')) {
+      return;
+    }
+
+    try {
+      addToast('Deleting...', 'Removing job from system.', 'error');
+      await axios.delete(`/jobs/${jobId}`);
+      
+      // Filter out deleted job from local state
+      setJobs((prev) => prev.filter((j) => j.id !== jobId));
+      addToast('Deleted', 'Job successfully deleted');
+      
+      if (selectedJob && selectedJob.id === jobId) {
+        setSelectedJob(null);
+      }
+    } catch (err) {
+      console.error('Delete Error:', err);
+      addToast('Delete Failed', err.response?.data?.error || 'Failed to delete job', 'error');
+    }
+  };
+
   const getStatusIcon = (status) => {
     switch (status) {
       case 'completed':
@@ -548,18 +573,29 @@ const Dashboard = () => {
                       <div style={{ flex: 1 }} />
                     )}
 
-                    {job.status === 'failed' ? (
+                    <div style={{ display: 'flex', gap: '6px' }}>
                       <button
-                        className="job-action-btn retry-btn"
-                        onClick={(e) => handleRetryJob(job.id, e)}
+                        className="job-action-btn"
+                        style={{ borderColor: 'rgba(239, 68, 68, 0.18)', color: '#FCA5A5' }}
+                        onClick={(e) => handleDeleteJob(job.id, e)}
+                        title="Delete Job"
                       >
-                        <RefreshCw size={12} /> Retry
+                        <Trash2 size={12} />
                       </button>
-                    ) : (
-                      <button className="job-action-btn">
-                        <Eye size={12} /> Details
-                      </button>
-                    )}
+
+                      {job.status === 'failed' ? (
+                        <button
+                          className="job-action-btn retry-btn"
+                          onClick={(e) => handleRetryJob(job.id, e)}
+                        >
+                          <RefreshCw size={12} /> Retry
+                        </button>
+                      ) : (
+                        <button className="job-action-btn">
+                          <Eye size={12} /> Details
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                 </div>
@@ -694,6 +730,13 @@ const Dashboard = () => {
               <div className="modal-actions">
                 <button className="modal-btn secondary" onClick={closeJobDetail}>
                   Close
+                </button>
+                <button
+                  className="modal-btn danger"
+                  onClick={() => handleDeleteJob(selectedJob.id)}
+                  style={{ background: 'var(--danger-light)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#FCA5A5' }}
+                >
+                  <Trash2 size={14} /> Delete Job
                 </button>
                 {selectedJob.status === 'failed' && (
                   <button
